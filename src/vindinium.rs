@@ -1,10 +1,10 @@
-extern crate mime;
 extern crate serialize;
 extern crate hyper;
 extern crate url;
 extern crate term;
 extern crate rustc_serialize;
 use std::string::{String};
+use std::io::Read;
 use std::isize;
 use std::fmt;
 use std::ops::Range;
@@ -12,8 +12,8 @@ use std::collections::BTreeMap;
 use std::char;
 use hyper::client::{RequestBuilder};
 use hyper::client::Client;
-use hyper::header::{ContentLength, ContentType, Accept, UserAgent};
-use hyper::header::shared::quality_item::QualityItem;
+use hyper::header::{ContentLength, ContentType, Accept, UserAgent, qitem};
+use hyper::mime::Mime;
 use url::{Url};
 use self::rustc_serialize::json;
 use self::rustc_serialize::json::Json;
@@ -132,10 +132,10 @@ pub fn request(url: String, obj: json::Json) -> Option<State> {
     let client = Client::new();
     let msg = json::encode(&obj).unwrap();
     let request = client.post(url).body(&msg);
-    let content_type = mime!(Application/Json);
+    let content_type: Mime = "Application/Json".parse().unwrap();
     request.header(ContentLength(msg.len() as u64));
-    request.header(ContentType(QualityItem::new(content_type)));
-    request.header(Accept(vec![content_type]));
+    request.header(ContentType(content_type));
+    request.header(Accept(vec![qitem(content_type)]));
     request.header(UserAgent("vindinium-starter-rust".to_string()));
 
     let response = request.send().unwrap();
@@ -148,25 +148,26 @@ pub fn request(url: String, obj: json::Json) -> Option<State> {
 //            return None
 //        }
 //    };
-    let state_str = match response.read_to_string() {
-        Ok(s) => s,
+    let mut state_str = String::new();
+    match response.read_to_string(&mut state_str) {
+        Ok(s) => {
+            match json::decode(&*state_str) {
+                Ok(state) => Some(state),
+                Err(err) => {
+                    if "Vindinium - The game is finished".to_string() == state_str {
+                        println!("Timeout!");
+                    } else {
+                        println!("{}", err);
+                    }
+                    None
+                },
+            }
+        },
         Err(err) => {
             println!("{}", err);
             return None
         }
     };
-
-    match json::decode(state_str.as_slice()) {
-        Ok(state) => Some(state),
-        Err(err) => {
-            if "Vindinium - The game is finished".to_string() == state_str {
-                println!("Timeout!");
-            } else {
-                println!("{}", err);
-            }
-            None
-        },
-    }
 }
 
 pub fn step_msg(settings: &Settings, state: &State, dir: Dir) -> (String, Json) {

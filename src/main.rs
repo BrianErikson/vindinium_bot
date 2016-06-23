@@ -1,7 +1,6 @@
 extern crate serialize;
 extern crate hyper;
 extern crate url;
-#[macro_use] extern crate mime;
 use std::string::String;
 use std::fs::File;
 use std::path::Path;
