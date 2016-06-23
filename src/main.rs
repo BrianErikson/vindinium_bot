@@ -48,7 +48,7 @@ fn get_key(filename: &str) -> String {
     let mut res_key = String::new();
     let res = File::open(&Path::new(filename)).unwrap().read_to_string(&mut res_key);
     match res {
-        Ok(size) => {
+        Ok(_) => {
             let mut key_ = res_key.clone();
             key_.pop();
             key_

@@ -1,5 +1,4 @@
 extern crate rand;
-use self::rand::Rng;
 use self::rand::distributions::{IndependentSample, Range};
 use vindinium::{Bot, Dir, State};
 
@@ -23,20 +22,20 @@ impl Bot for RandomBot {
         let mut bot: RandomBot = self.clone();
         let mut rng = rand::thread_rng();
         let range = Range::new(0, 5);
-        let newDir = range.ind_sample(&mut rng);
-        let newDir = match newDir {
+        let new_dir = range.ind_sample(&mut rng);
+        let new_dir = match new_dir {
             0 => Dir::North,
             1 => Dir::East,
             2 => Dir::South,
             3 => Dir::West,
             4 => Dir::Stay,
-            _ => panic!("Random value out of range! Value: {}", newDir)
+            _ => panic!("Random value out of range! Value: {}", new_dir)
         };
-        bot.dir = newDir;
+        bot.dir = new_dir;
         bot
     }
 
     fn dir(&self) -> Dir {
-        self.dir
+        self.dir.clone()
     }
 }

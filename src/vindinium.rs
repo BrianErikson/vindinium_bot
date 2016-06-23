@@ -4,18 +4,15 @@ extern crate term;
 extern crate rustc_serialize;
 use std::string::{String};
 use std::io::Read;
-use std::isize;
 use std::fmt;
-use std::ops::Range;
 use std::collections::BTreeMap;
 use std::char;
-use hyper::client::{RequestBuilder};
 use hyper::client::Client;
 use hyper::header::{ContentLength, ContentType, Accept, UserAgent, qitem};
 use hyper::mime::Mime;
 use url::{Url};
 use rustc_serialize::json;
-use rustc_serialize::json::{Json, DecoderError};
+use rustc_serialize::json::Json;
 use rustc_serialize::{Encoder, Encodable, Decoder, Decodable};
 use self::term::{Terminal};
 use self::term::color;
@@ -120,22 +117,21 @@ impl Settings {
 }
 
 fn parse_request(url: Url, obj: json::Object) -> Option<State> {
+    let content_type: Mime = "Application/Json".parse().unwrap();
     let client = Client::new();
     let msg = json::encode(&obj).unwrap();
-    let request = client.post(url);
-    request.body(&msg);
-    let content_type: Mime = "Application/Json".parse().unwrap();
-    request.header(ContentLength(msg.len() as u64));
-    request.header(ContentType(content_type));
-    request.header(Accept(vec![qitem(content_type)]));
-    request.header(UserAgent("vindinium-starter-rust".to_string()));
+    let request = client.post(url).body(&msg)
+        .header(ContentLength(msg.len() as u64))
+        .header(ContentType(content_type.clone()))
+        .header(Accept(vec![qitem(content_type)]))
+        .header(UserAgent("vindinium-starter-rust".to_string()));
 
     let mut response = request.send().unwrap();
     assert_eq!(response.status, hyper::Ok);
 
     let mut state_str = String::new();
     match response.read_to_string(&mut state_str) {
-        Ok(s) => {
+        Ok(_) => {
             return match json::decode(&state_str) {
                 Ok(state) => Some(state),
                 Err(err) => {
@@ -156,7 +152,7 @@ fn parse_request(url: Url, obj: json::Object) -> Option<State> {
 }
 
 pub fn request(url: String, obj: json::Object) -> Option<State> {
-    let url = match Url::parse(url.as_str()) {
+    match Url::parse(url.as_str()) {
         Ok(u) => return parse_request(u, obj),
         Err(err) => {
             println!("{}", err);
@@ -166,7 +162,7 @@ pub fn request(url: String, obj: json::Object) -> Option<State> {
 }
 
 pub fn step_msg(settings: &Settings, state: &State, dir: Dir) -> (String, json::Object) {
-    let mut obj: json::Object = BTreeMap::<String, Json>::new();
+    let mut obj: json::Object = json::Object::new();
     obj.insert("key".to_string(), Json::String(settings.key.clone()));
     obj.insert("dir".to_string(), Json::String(dir.to_string()));
     (state.play_url.clone(), obj)
@@ -348,8 +344,8 @@ impl State {
         // print game info
         (writeln!(term, "id:{} turns:{}/{}", self.game.id, self.game.turn, self.game.max_turns)).unwrap();
         // print tiles on board
-        for &ref row in self.game.board.tiles.iter() {
-            for &tile in row.iter() {
+        for row in self.game.board.tiles.clone() {
+            for tile in row {
                 let s: String = match tile {
                     Tile::Free => {
                         term.bg(color::BRIGHT_BLACK).unwrap();
