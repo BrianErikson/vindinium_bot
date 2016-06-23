@@ -1,4 +1,3 @@
-extern crate serialize;
 extern crate hyper;
 extern crate url;
 extern crate term;
@@ -15,9 +14,9 @@ use hyper::client::Client;
 use hyper::header::{ContentLength, ContentType, Accept, UserAgent, qitem};
 use hyper::mime::Mime;
 use url::{Url};
-use self::rustc_serialize::json;
-use self::rustc_serialize::json::Json;
-use self::rustc_serialize::{Encoder, Encodable, Decoder, Decodable};
+use rustc_serialize::json;
+use rustc_serialize::json::{Json, DecoderError};
+use rustc_serialize::{Encoder, Encodable, Decoder, Decodable};
 use self::term::{Terminal};
 use self::term::color;
 
@@ -27,20 +26,20 @@ pub type Key = String;
 pub type GameId = String;
 pub type HeroId = isize;
 
-//#[derive(Show, Clone)]
+#[derive(Debug, Clone)]
 pub enum Mode {
     Training(Option<u64>,Option<String>),
     Arena
 }
 
-//#[derive(Show, Clone)]
+#[derive(Debug, Clone)]
 pub struct Settings {
     pub key: Key,
     pub url: String,
     pub mode: Mode,
 }
 
-//#[derive(Show, Clone)]
+#[derive(Debug, Clone)]
 pub struct State {
     pub game: Game,
     pub hero: Hero,
@@ -49,7 +48,7 @@ pub struct State {
     pub play_url: String,
 }
 
-//#[derive(Show, Clone)]
+#[derive(Debug, Clone)]
 pub struct Game {
     pub id: GameId,
     pub turn: isize,
@@ -59,13 +58,13 @@ pub struct Game {
     pub finished: bool,
 }
 
-//#[derive(Show, Clone)]
+#[derive(Debug, Clone)]
 pub struct Pos {
     pub x: isize,
     pub y: isize,
 }
 
-//#[derive(Show, Clone)]
+#[derive(Debug, Clone)]
 pub struct Hero {
     pub id: HeroId,
     pub name: String,
@@ -79,13 +78,13 @@ pub struct Hero {
     pub crashed: bool,
 }
 
-//#[derive(Show, Clone)]
+#[derive(Debug, Clone)]
 pub struct Board {
     pub size: usize,
     pub tiles: Vec<Vec<Tile>>,
 }
 
-//#[derive(Show, Clone)]
+#[derive(Debug, Clone)]
 pub enum Tile {
     Free,
     Wood,
@@ -94,7 +93,7 @@ pub enum Tile {
     Mine(Option<HeroId>),
 }
 
-//#[derive(Show, Clone, Rand)]
+#[derive(Debug, Clone)]
 pub enum Dir {
     Stay,
     North,
@@ -120,38 +119,24 @@ impl Settings {
     }
 }
 
-pub fn request(url: String, obj: json::Json) -> Option<State> {
-    let url = match Url::parse(url.as_str()) {
-        Ok(u) => u,
-        Err(err) => {
-            println!("{}", err);
-            return None
-        },
-    };
-
+fn parse_request(url: Url, obj: json::Object) -> Option<State> {
     let client = Client::new();
     let msg = json::encode(&obj).unwrap();
-    let request = client.post(url).body(&msg);
+    let request = client.post(url);
+    request.body(&msg);
     let content_type: Mime = "Application/Json".parse().unwrap();
     request.header(ContentLength(msg.len() as u64));
     request.header(ContentType(content_type));
     request.header(Accept(vec![qitem(content_type)]));
     request.header(UserAgent("vindinium-starter-rust".to_string()));
 
-    let response = request.send().unwrap();
+    let mut response = request.send().unwrap();
     assert_eq!(response.status, hyper::Ok);
 
-//    let mut response = match request.read_response() {
-//        Ok(resp) => resp,
-//        Err((_, err)) => {
-//            println!("{}", err);
-//            return None
-//        }
-//    };
     let mut state_str = String::new();
     match response.read_to_string(&mut state_str) {
         Ok(s) => {
-            match json::decode(&*state_str) {
+            return match json::decode(&state_str) {
                 Ok(state) => Some(state),
                 Err(err) => {
                     if "Vindinium - The game is finished".to_string() == state_str {
@@ -170,22 +155,32 @@ pub fn request(url: String, obj: json::Json) -> Option<State> {
     };
 }
 
-pub fn step_msg(settings: &Settings, state: &State, dir: Dir) -> (String, Json) {
-    let mut obj: Json::Object = BTreeMap::new();
+pub fn request(url: String, obj: json::Object) -> Option<State> {
+    let url = match Url::parse(url.as_str()) {
+        Ok(u) => return parse_request(u, obj),
+        Err(err) => {
+            println!("{}", err);
+            return None
+        }
+    };
+}
+
+pub fn step_msg(settings: &Settings, state: &State, dir: Dir) -> (String, json::Object) {
+    let mut obj: json::Object = BTreeMap::<String, Json>::new();
     obj.insert("key".to_string(), Json::String(settings.key.clone()));
-    obj.insert("dir".to_string(), Json::String(format_args!("{}", dir)));
+    obj.insert("dir".to_string(), Json::String(dir.to_string()));
     (state.play_url.clone(), obj)
 }
 
-pub fn start_msg(settings: &Settings) -> (String, Json) {
+pub fn start_msg(settings: &Settings) -> (String, json::Object) {
     match settings.mode.clone() {
         Mode::Training(opt_turns, opt_map) => start_training_msg(settings, opt_turns, opt_map),
         Mode::Arena => start_arena_msg(settings),
     }
 }
 
-pub fn start_training_msg(settings: &Settings, opt_turns: Option<u64>, opt_map: Option<String>) -> (String, Json) {
-    let mut obj: Json::Object = BTreeMap::new();
+pub fn start_training_msg(settings: &Settings, opt_turns: Option<u64>, opt_map: Option<String>) -> (String, json::Object) {
+    let mut obj: json::Object = BTreeMap::new();
     obj.insert("key".to_string(), Json::String(settings.key.clone()));
     match opt_turns {
         Some(turns) => { obj.insert("turns".to_string(), Json::U64(turns)); },
@@ -198,8 +193,8 @@ pub fn start_training_msg(settings: &Settings, opt_turns: Option<u64>, opt_map: 
     (settings.start_url("training"), obj)
 }
 
-pub fn start_arena_msg(settings: &Settings) -> (String, Json) {
-    let mut obj: Json::Object = BTreeMap::new();
+pub fn start_arena_msg(settings: &Settings) -> (String, json::Object) {
+    let mut obj: json::Object = BTreeMap::new();
     obj.insert("key".to_string(), Json::String(settings.key.clone()));
     (settings.start_url("arena"), obj)
 }
@@ -288,7 +283,7 @@ impl Decodable for Board {
                             None => return Err(d.error("failed parse Tile::Mine num")),
                             Some(n) => row.push(Tile::Mine(Some(n as isize))),
                         },
-                        (a,b) => return Err(d.error(format!("failed parsing tile \"{}{}\"", a, b).as_slice())),
+                        (a,b) => return Err(d.error(&format!("failed parsing tile \"{}{}\"", a, b))),
                     }
                     i += 2;
                     if i % (size * 2) == 0 {
@@ -444,5 +439,17 @@ impl State {
         }
         // reset colors to back default
         term.reset().unwrap();
+    }
+}
+
+impl fmt::Display for Dir {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Dir::Stay =>  write!(f, "{}", "Stay"),
+            Dir::North => write!(f, "{}", "North"),
+            Dir::South => write!(f, "{}", "South"),
+            Dir::East =>  write!(f, "{}", "East"),
+            Dir::West =>  write!(f, "{}", "West"),
+        }
     }
 }

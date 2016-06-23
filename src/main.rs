@@ -1,9 +1,11 @@
-extern crate serialize;
 extern crate hyper;
 extern crate url;
+extern crate rustc_serialize;
 use std::string::String;
 use std::fs::File;
 use std::path::Path;
+use std::io::Read;
+use self::rustc_serialize::json;
 
 use vindinium::*;
 use bot::*;
@@ -20,7 +22,7 @@ fn main() {
         mode: Mode::Training(Some(100), Some("m1".to_string())),
     };
     let (url, obj) = start_msg(&settings);
-    let mut state = match vindinium::request(url, obj) {
+    let mut state = match vindinium::request(url, obj as json::Object) {
         Some(s) => s,
         None => { return (); }
     };
@@ -43,10 +45,11 @@ fn main() {
 }
 
 fn get_key(filename: &str) -> String {
-    let res_key = File::open(&Path::new(filename)).read_to_string();
-    match res_key {
-        Ok(key) => {
-            let mut key_ = key.clone();
+    let mut res_key = String::new();
+    let res = File::open(&Path::new(filename)).unwrap().read_to_string(&mut res_key);
+    match res {
+        Ok(size) => {
+            let mut key_ = res_key.clone();
             key_.pop();
             key_
         }
