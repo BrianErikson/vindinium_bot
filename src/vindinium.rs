@@ -344,9 +344,9 @@ impl State {
         // print game info
         (writeln!(term, "id:{} turns:{}/{}", self.game.id, self.game.turn, self.game.max_turns)).unwrap();
         // print tiles on board
-        for row in self.game.board.tiles.clone() {
+        for row in &self.game.board.tiles {
             for tile in row {
-                let s: String = match tile {
+                let s: String = match *tile {
                     Tile::Free => {
                         term.bg(color::BRIGHT_BLACK).unwrap();
                         "  ".to_string()
@@ -430,8 +430,8 @@ impl State {
                 3 => color::BRIGHT_YELLOW,
                 _ => color::WHITE,
             }).unwrap();
-            (writeln!(term,"@1\t{}\tlife:{}\tmines:{}\tgold:{}",
-                hero.name, hero.life, hero.mine_count, hero.gold)).unwrap();
+            (writeln!(term,"@{}\t{}\tlife:{}\tmines:{}\tgold:{}",
+               i+1, hero.name, hero.life, hero.mine_count, hero.gold)).unwrap();
         }
         // reset colors to back default
         term.reset().unwrap();
