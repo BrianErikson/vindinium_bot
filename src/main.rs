@@ -23,7 +23,7 @@ fn main() {
     };
 
     let (url, obj) = start_msg(&settings);
-    let mut state = match vindinium::request(url, obj as json::Object) {
+    let mut state: State = match vindinium::request(url, obj as json::Object) {
         Some(s) => s,
         None => { return (); }
     };
@@ -34,6 +34,7 @@ fn main() {
         }
         state.pretty_print();
         if state.game.finished {
+            println!("Game finished!");
             break;
         }
         bot = bot.step(&state);
@@ -43,6 +44,7 @@ fn main() {
             None => { break; },
         }
     }
+    println!("see a replay of the game at {}", state.view_url);
 }
 
 fn get_key(filename: &str) -> String {
