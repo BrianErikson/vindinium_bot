@@ -21,6 +21,7 @@ fn main() {
         url: "http://vindinium.org".to_string(),
         mode: Mode::Training(Some(100), Some("m1".to_string())),
     };
+
     let (url, obj) = start_msg(&settings);
     let mut state = match vindinium::request(url, obj as json::Object) {
         Some(s) => s,
@@ -49,9 +50,7 @@ fn get_key(filename: &str) -> String {
     let res = File::open(&Path::new(filename)).unwrap().read_to_string(&mut res_key);
     match res {
         Ok(_) => {
-            let mut key_ = res_key.clone();
-            key_.pop();
-            key_
+            res_key.clone()
         }
         Err(err) => panic!("{}", err),
     }
