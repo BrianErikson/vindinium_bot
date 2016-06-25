@@ -28,7 +28,7 @@ fn main() {
         Some(s) => s,
         None => { return (); }
     };
-    let mut bot = RandomBot::new();
+    let mut bot = EmergentBot::new();
     loop {
         if state.game.turn >= state.game.heroes.len() as isize {
             state.clear_pretty_print();

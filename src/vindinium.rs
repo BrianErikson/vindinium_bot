@@ -2,7 +2,6 @@ extern crate hyper;
 extern crate url;
 extern crate term;
 extern crate rustc_serialize;
-use std::mem;
 use std::string::{String};
 use std::io::Read;
 use std::fmt;
@@ -258,7 +257,7 @@ impl ToGrid for Board {
         for x in 0..self.size {
             let mut new_row: Vec<Cell> = Vec::new();
             for y in 0..self.size {
-                new_row.push(Cell {tile: tiles[x][y].clone(), pos: Vector2 {x: x as i8, y: y as i8}, f: 0, g: 0, h: 0});
+                new_row.push(Cell {tile: tiles[x][y].clone(), pos: Vector2 {x: x, y: y}, f: 0, g: 0, h: 0});
             }
             cells.push(new_row);
         }
