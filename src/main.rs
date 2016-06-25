@@ -9,6 +9,7 @@ use self::rustc_serialize::json;
 
 use vindinium::*;
 use bot::*;
+mod pathing;
 mod vindinium;
 mod bot;
 

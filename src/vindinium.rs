@@ -2,6 +2,7 @@ extern crate hyper;
 extern crate url;
 extern crate term;
 extern crate rustc_serialize;
+use std::mem;
 use std::string::{String};
 use std::io::Read;
 use std::fmt;
@@ -13,6 +14,7 @@ use url::{Url};
 use rustc_serialize::json;
 use rustc_serialize::json::Json;
 use rustc_serialize::{Encoder, Encodable, Decoder, Decodable};
+use pathing::{ToGrid, Grid, Cell, Vector2};
 use self::term::{Terminal};
 use self::term::color;
 
@@ -245,6 +247,23 @@ impl Decodable for Hero {
                 crashed: try!(d.read_struct_field("crashed", 9, |d| Decodable::decode(d))),
             })
         })
+    }
+}
+
+impl ToGrid for Board {
+    fn to_grid(&self) -> Grid {
+        let ref tiles = self.tiles;
+        let mut cells: Vec<Vec<Cell>> = Vec::new();
+
+        for x in 0..self.size {
+            let mut new_row: Vec<Cell> = Vec::new();
+            for y in 0..self.size {
+                new_row.push(Cell {tile: tiles[x][y].clone(), pos: Vector2 {x: x as i8, y: y as i8}, f: 0, g: 0, h: 0});
+            }
+            cells.push(new_row);
+        }
+
+        Grid {size: self.size as i8, cells: cells}
     }
 }
 
