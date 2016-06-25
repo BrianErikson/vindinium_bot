@@ -1,5 +1,7 @@
 # Vindinium Bot
 
+[![Join the chat at https://gitter.im/EmergentOrganization/vindinium_bot](https://badges.gitter.im/EmergentOrganization/vindinium_bot.svg)](https://gitter.im/EmergentOrganization/vindinium_bot?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Bot name: Emergent_Bot
 
 ## Getting Started
