@@ -1,7 +1,9 @@
 extern crate rand;
 use self::rand::distributions::{IndependentSample, Range};
+use std::convert::From;
 use vindinium::{Bot, Dir, State};
-use pathing::step_towards;
+use pathing;
+use pathing::{ToMap, UVector2, IVector2};
 
 
 #[derive(Debug, Clone)]
@@ -19,23 +21,28 @@ impl EmergentBot {
 
 impl Bot for EmergentBot {
 
-    fn step(&self, _: &State) -> EmergentBot {
+    fn step(&self, state: &State) -> EmergentBot {
         let mut bot: EmergentBot = self.clone();
-        bot
+        let cur_pos = UVector2{x: state.hero.pos.x as usize, y: state.hero.pos.y as usize};
+        let path = pathing::gen_path(
+            &cur_pos,
+            UVector2{x:5,y:5},
+            state.game.board.to_map()
+        );
 
-//        let mut rng = rand::thread_rng();
-//        let range = Range::new(0, 5);
-//        let new_dir = range.ind_sample(&mut rng);
-//        let new_dir = match new_dir {
-//            0 => Dir::North,
-//            1 => Dir::East,
-//            2 => Dir::South,
-//            3 => Dir::West,
-//            4 => Dir::Stay,
-//            _ => panic!("Random value out of range! Value: {}", new_dir)
-//        };
-//        bot.dir = new_dir;
-//        bot
+        let cur_pos = IVector2::from(cur_pos);
+        let new_pos = IVector2::from(path.front().unwrap().pos.clone());
+
+        let new_dir = match (cur_pos.x - new_pos.x, cur_pos.y - new_pos.y) {
+            (0,1) => Dir::North,
+            (1,0) => Dir::East,
+            (0,-1) => Dir::South,
+            (-1,0) => Dir::West,
+            (_,_) => panic!("Could not determine direction returned from path!")
+        };
+
+        bot.dir = new_dir;
+        bot
     }
 
     fn dir(&self) -> Dir {

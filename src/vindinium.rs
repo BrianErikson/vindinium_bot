@@ -13,7 +13,7 @@ use url::{Url};
 use rustc_serialize::json;
 use rustc_serialize::json::Json;
 use rustc_serialize::{Encoder, Encodable, Decoder, Decodable};
-use pathing::{ToGrid, Grid, Cell, Vector2};
+use pathing::{ToMap, Map, Grid, Cell, UVector2};
 use self::term::{Terminal};
 use self::term::color;
 
@@ -81,7 +81,7 @@ pub struct Board {
     pub tiles: Vec<Vec<Tile>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Tile {
     Free,
     Wood,
@@ -249,20 +249,20 @@ impl Decodable for Hero {
     }
 }
 
-impl ToGrid for Board {
-    fn to_grid(&self) -> Grid {
+impl ToMap for Board {
+    fn to_map(&self) -> Map {
         let ref tiles = self.tiles;
-        let mut cells: Vec<Vec<Cell>> = Vec::new();
+        let mut cells: Grid = Grid::new();
 
         for x in 0..self.size {
             let mut new_row: Vec<Cell> = Vec::new();
             for y in 0..self.size {
-                new_row.push(Cell {tile: tiles[x][y].clone(), pos: Vector2 {x: x, y: y}, f: 0, g: 0, h: 0});
+                new_row.push(Cell {tile: tiles[x][y].clone(), pos: UVector2 {x: x, y: y}, f: 0, g: 0, h: 0});
             }
             cells.push(new_row);
         }
 
-        Grid {size: self.size as i8, cells: cells}
+        Map {size: self.size as u8, grid: cells}
     }
 }
 
