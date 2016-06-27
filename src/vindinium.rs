@@ -6,14 +6,14 @@ use std::string::{String};
 use std::io::Read;
 use std::fmt;
 use std::char;
-use hyper::client::Client;
-use hyper::header::{ContentLength, ContentType, Accept, UserAgent, qitem};
-use hyper::mime::Mime;
-use url::{Url};
-use rustc_serialize::json;
-use rustc_serialize::json::Json;
-use rustc_serialize::{Encoder, Encodable, Decoder, Decodable};
-use self::term::{Terminal};
+use self::hyper::client::Client;
+use self::hyper::header::{ContentLength, ContentType, Accept, UserAgent, qitem};
+use self::hyper::mime::Mime;
+use self::url::{Url};
+use self::rustc_serialize::json;
+use self::rustc_serialize::json::Json;
+use self::rustc_serialize::{Encoder, Encodable, Decoder, Decodable};
+use self::term::{Terminal, StdoutTerminal};
 use self::term::color;
 
 // Types
@@ -345,75 +345,7 @@ impl State {
         // print tiles on board
         for row in &self.game.board.tiles {
             for tile in row {
-                let s: String = match *tile {
-                    Tile::Free => {
-                        term.bg(color::BRIGHT_BLACK).unwrap();
-                        "  ".to_string()
-                    },
-                    Tile::Wood => {
-                        term.bg(color::BRIGHT_BLACK).unwrap();
-                        term.fg(color::WHITE).unwrap();
-                        "##".to_string()
-                    },
-                    Tile::Tavern => {
-                        term.bg(color::BRIGHT_BLACK).unwrap();
-                        term.fg(color::WHITE).unwrap();
-                        "[]".to_string()
-                    },
-                    Tile::Hero(hero_id) => {
-                        term.bg(color::BRIGHT_BLACK).unwrap();
-                        match hero_id {
-                            1 => {
-                                term.fg(color::BRIGHT_RED).unwrap();
-                                "@1".to_string()
-                            }
-                            2 => {
-                                term.fg(color::BRIGHT_BLUE).unwrap();
-                                "@2".to_string()
-                            }
-                            3 => {
-                                term.fg(color::BRIGHT_GREEN).unwrap();
-                                "@3".to_string()
-                            }
-                            4 => {
-                                term.fg(color::BRIGHT_YELLOW).unwrap();
-                                "@4".to_string()
-                            }
-                            _ => {
-                                "  ".to_string()
-                            }
-                        }
-                    },
-                    Tile::Mine(None) => {
-                        term.bg(color::BRIGHT_BLACK).unwrap();
-                        term.fg(color::WHITE).unwrap();
-                        "$-".to_string()
-                    },
-                    Tile::Mine(Some(hero_id)) => {
-                        term.fg(color::WHITE).unwrap();
-                        match hero_id {
-                            1 => {
-                                term.bg(color::RED).unwrap();
-                                "$1".to_string()
-                            }
-                            2 => {
-                                term.bg(color::BLUE).unwrap();
-                                "$2".to_string()
-                            }
-                            3 => {
-                                term.bg(color::GREEN).unwrap();
-                                "$3".to_string()
-                            }
-                            4 => {
-                                term.bg(color::YELLOW).unwrap();
-                                "$4".to_string()
-                            }
-                            _ => {
-                                "  ".to_string()
-                            }
-                        }
-                    },
-                };
+                let s: String = get_tile_rep(tile, &mut term);
                 (write!(term, "{}", s)).unwrap();
             }
             (writeln!(term,"")).unwrap();
@@ -435,6 +367,78 @@ impl State {
         // reset colors to back default
         term.reset().unwrap();
     }
+}
+
+pub fn get_tile_rep(tile: &Tile, term: &mut Box<StdoutTerminal>) -> String {
+    return match *tile {
+        Tile::Free => {
+            term.bg(color::BRIGHT_BLACK).unwrap();
+            "  ".to_string()
+        },
+        Tile::Wood => {
+            term.bg(color::BRIGHT_BLACK).unwrap();
+            term.fg(color::WHITE).unwrap();
+            "##".to_string()
+        },
+        Tile::Tavern => {
+            term.bg(color::BRIGHT_BLACK).unwrap();
+            term.fg(color::WHITE).unwrap();
+            "[]".to_string()
+        },
+        Tile::Hero(hero_id) => {
+            term.bg(color::BRIGHT_BLACK).unwrap();
+            match hero_id {
+                1 => {
+                    term.fg(color::BRIGHT_RED).unwrap();
+                    "@1".to_string()
+                }
+                2 => {
+                    term.fg(color::BRIGHT_BLUE).unwrap();
+                    "@2".to_string()
+                }
+                3 => {
+                    term.fg(color::BRIGHT_GREEN).unwrap();
+                    "@3".to_string()
+                }
+                4 => {
+                    term.fg(color::BRIGHT_YELLOW).unwrap();
+                    "@4".to_string()
+                }
+                _ => {
+                    "  ".to_string()
+                }
+            }
+        },
+        Tile::Mine(None) => {
+            term.bg(color::BRIGHT_BLACK).unwrap();
+            term.fg(color::WHITE).unwrap();
+            "$-".to_string()
+        },
+        Tile::Mine(Some(hero_id)) => {
+            term.fg(color::WHITE).unwrap();
+            match hero_id {
+                1 => {
+                    term.bg(color::RED).unwrap();
+                    "$1".to_string()
+                }
+                2 => {
+                    term.bg(color::BLUE).unwrap();
+                    "$2".to_string()
+                }
+                3 => {
+                    term.bg(color::GREEN).unwrap();
+                    "$3".to_string()
+                }
+                4 => {
+                    term.bg(color::YELLOW).unwrap();
+                    "$4".to_string()
+                }
+                _ => {
+                    "  ".to_string()
+                }
+            }
+        },
+    };
 }
 
 impl fmt::Display for Dir {
