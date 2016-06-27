@@ -1,9 +1,7 @@
-extern crate rand;
-use self::rand::distributions::{IndependentSample, Range};
 use std::convert::From;
 use vindinium::{Bot, Dir, State};
 use pathing;
-use pathing::{ToMap, UVector2, IVector2};
+use pathing::{UVector2, IVector2, Map};
 
 
 #[derive(Debug, Clone)]
@@ -26,12 +24,12 @@ impl Bot for EmergentBot {
         let cur_pos = UVector2{x: state.hero.pos.x as usize, y: state.hero.pos.y as usize};
         let path = pathing::gen_path(
             &cur_pos,
-            UVector2{x:5,y:5},
-            state.game.board.to_map()
+            &UVector2{x:5,y:5},
+            &Map::from(&state.game.board)
         );
 
-        let cur_pos = IVector2::from(cur_pos);
-        let new_pos = IVector2::from(path.front().unwrap().pos.clone());
+        let cur_pos = IVector2::from(&cur_pos);
+        let new_pos = IVector2::from(&path.front().unwrap().pos);
 
         let new_dir = match (cur_pos.x - new_pos.x, cur_pos.y - new_pos.y) {
             (0,1) => Dir::North,
