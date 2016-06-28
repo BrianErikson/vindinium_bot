@@ -25,7 +25,8 @@ fn display_path() {
     };
 
     let map: pathing::Map = pathing::Map::from(&state.game.board);
-    let player_pos: pathing::UVector2 = pathing::UVector2::from(&state.hero.pos);
+    let player_pos: pathing::UVector2 = pathing::UVector2{
+        x: state.hero.pos.x as usize, y: state.hero.pos.y as usize};
     let path: pathing::Path = pathing::gen_path(
         &player_pos,
         &pathing::UVector2{x: player_pos.x + 5, y: player_pos.y},
