@@ -113,6 +113,13 @@ fn calc_neighbor(ref_cell: &Cell, target_pos: &UVector2, diag: bool) -> Cell {
     cell
 }
 
+fn cell_index_valid(row: isize, column: isize, grid_size: usize) -> bool {
+    let size: isize = grid_size as isize;
+
+    if (row-1 >= 0 && column-1 >= 0) && (row+1 < size && column+1 < size) {true}
+    else {false}
+}
+
 /// Calculates f, g, and h values for each cell surrounding the `cp` parameter.
 /// - Returns surrounding neighbors with calculated values
 fn calc_neighbors(cp: &UVector2, target_pos: &UVector2, cells: &Grid, grid_size: usize) -> Vec<Cell> {
@@ -124,7 +131,7 @@ fn calc_neighbors(cp: &UVector2, target_pos: &UVector2, cells: &Grid, grid_size:
     let mut open_cells: Vec<Cell> = vec!();
 
     // quick constrain bounds
-    println!("x: {} y: {}", cp.x, cp.y);
+    //println!("x: {} y: {}", cp.x, cp.y);
     if (i_cp.x-1 >= 0 && i_cp.y-1 >= 0) && (i_cp.x+1 < i_grid_size && i_cp.y+1 < i_grid_size) {
         // now safe to not do bounds checking
         // diagonal d-weights
@@ -140,24 +147,57 @@ fn calc_neighbors(cp: &UVector2, target_pos: &UVector2, cells: &Grid, grid_size:
     }
     // slow constrain bounds :(
     else {
-        open_cells.push(calc_neighbor(&cells[cp.x-1][cp.y], target_pos, false));      // hl
-        open_cells.push(calc_neighbor(&cells[cp.x-1][cp.y-1], target_pos, true));     // dl
-        open_cells.push(calc_neighbor(&cells[cp.x][cp.y-1], target_pos, false));      // dv
+        for x in 0..3 {
+            for y in 0..3 {
+                let cell_ind = ((x as isize) - 1, (y as isize) - 1);
+                if cell_ind.0 == 0 && cell_ind.1 == 0 {continue}
+                //println!("Test slow: {}, {}", cell_ind.0, cell_ind.1);
+                let is_diag = match cell_ind {
+                    (-1,-1) => true,
+                    (-1, 1) => true,
+                    (1, 1)  => true,
+                    (1, -1) => true,
+                    (_, _)  => false
+                };
 
-        if cp.y < grid_size-1 {
-            open_cells.push(calc_neighbor(&cells[cp.x-1][cp.y+1], target_pos, true)); // ul
-            open_cells.push(calc_neighbor(&cells[cp.x][cp.y+1], target_pos, false));  // uv
-        }
-
-        if cp.x < grid_size - 1 {
-            open_cells.push(calc_neighbor(&cells[cp.x+1][cp.y], target_pos, false));      // hr
-
-            if cp.y < grid_size-1 {
-                open_cells.push(calc_neighbor(&cells[cp.x+1][cp.y+1], target_pos, true)); // ur
+                if cell_index_valid(cell_ind.0, cell_ind.1, grid_size) {
+                    open_cells.push(
+                        calc_neighbor(
+                            &cells[cell_ind.0 as usize][cell_ind.1 as usize],
+                            target_pos,
+                            is_diag
+                        )
+                    );
+                }
             }
-
-            open_cells.push(calc_neighbor(&cells[cp.x+1][cp.y-1], target_pos, true)); // dr
         }
+//        if i_cp.x - 1 >= 0 && i_cp.y - 1 >= 0 {
+//            open_cells.push(calc_neighbor(&cells[cp.x-1][cp.y], target_pos, false));      // hl
+//            if i_cp.y - 1 >= 0 {
+//                open_cells.push(calc_neighbor(&cells[cp.x-1][cp.y-1], target_pos, true));     // dl
+//            }
+//            if cp.y < grid_size - 1 {
+//                open_cells.push(calc_neighbor(&cells[cp.x-1][cp.y+1], target_pos, true)); // ul
+//            }
+//        }
+//
+//        if i_cp.y - 1 >= 0 {
+//            open_cells.push(calc_neighbor(&cells[cp.x][cp.y-1], target_pos, false));      // dv
+//
+//            if cp.y < grid_size-1 {
+//                open_cells.push(calc_neighbor(&cells[cp.x][cp.y+1], target_pos, false));  // uv
+//            }
+//        }
+//
+//        if cp.x < grid_size - 1 {
+//            open_cells.push(calc_neighbor(&cells[cp.x+1][cp.y], target_pos, false));      // hr
+//
+//            if cp.y < grid_size-1 {
+//                open_cells.push(calc_neighbor(&cells[cp.x+1][cp.y+1], target_pos, true)); // ur
+//            }
+//
+//            open_cells.push(calc_neighbor(&cells[cp.x+1][cp.y-1], target_pos, true)); // dr
+//        }
     }
     // end constrain bounds
     open_cells
