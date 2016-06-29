@@ -27,7 +27,7 @@ fn print_over(path: &pathing::Path, map: &Map) {
                 Some(_) => {
                     term.bg(color::BRIGHT_BLACK).unwrap();
                     term.fg(color::WHITE).unwrap();
-                    "><".to_string()
+                    "..".to_string()
                 },
                 None => vindinium::get_tile_rep(&cell.tile, &mut term)
             };
@@ -59,7 +59,7 @@ fn display_path() {
         x: state.hero.pos.x as usize, y: state.hero.pos.y as usize};
     let path: pathing::Path = pathing::gen_path(
         &player_pos,
-        &pathing::UVector2{x: player_pos.x + 5, y: player_pos.y},
+        &pathing::UVector2{x: player_pos.x + 8, y: player_pos.y},
         &map
     );
     print_over(&path, &map);

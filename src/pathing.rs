@@ -1,6 +1,7 @@
 use vindinium::{Tile, Board};
 use std::convert::From;
 use std::collections::LinkedList;
+use std::io;
 
 pub type Grid = Vec<Vec<Cell>>;
 pub type Path = LinkedList<Cell>;
@@ -146,33 +147,6 @@ fn calc_neighbors(cp: &UVector2, target_pos: &UVector2, cells: &Grid, grid_size:
                 }
             }
         }
-//        if i_cp.x - 1 >= 0 && i_cp.y - 1 >= 0 {
-//            open_cells.push(calc_neighbor(&cells[cp.x-1][cp.y], target_pos, false));      // hl
-//            if i_cp.y - 1 >= 0 {
-//                open_cells.push(calc_neighbor(&cells[cp.x-1][cp.y-1], target_pos, true));     // dl
-//            }
-//            if cp.y < grid_size - 1 {
-//                open_cells.push(calc_neighbor(&cells[cp.x-1][cp.y+1], target_pos, true)); // ul
-//            }
-//        }
-//
-//        if i_cp.y - 1 >= 0 {
-//            open_cells.push(calc_neighbor(&cells[cp.x][cp.y-1], target_pos, false));      // dv
-//
-//            if cp.y < grid_size-1 {
-//                open_cells.push(calc_neighbor(&cells[cp.x][cp.y+1], target_pos, false));  // uv
-//            }
-//        }
-//
-//        if cp.x < grid_size - 1 {
-//            open_cells.push(calc_neighbor(&cells[cp.x+1][cp.y], target_pos, false));      // hr
-//
-//            if cp.y < grid_size-1 {
-//                open_cells.push(calc_neighbor(&cells[cp.x+1][cp.y+1], target_pos, true)); // ur
-//            }
-//
-//            open_cells.push(calc_neighbor(&cells[cp.x+1][cp.y-1], target_pos, true)); // dr
-//        }
     }
     // end constrain bounds
     open_cells
@@ -180,15 +154,13 @@ fn calc_neighbors(cp: &UVector2, target_pos: &UVector2, cells: &Grid, grid_size:
 
 pub fn gen_path(bot_pos: &UVector2, target_pos: &UVector2, map: &Map) -> Path {
     let path_grid = &map.grid;
-    //let ref target_cell = path_cells[target_pos.x][target_pos.y];
     let mut open_cells: Vec<Cell> = vec!((path_grid[bot_pos.x][bot_pos.y].clone()));
     let mut closed_cells: LinkedList<Cell> = LinkedList::new();
-    let tp = target_pos.clone();
 
     // gather optimal f-val cells
     loop {
         match closed_cells.back() {
-            Some(cell) if cell.pos == tp => {break;},
+            Some(cell) if cell.pos == *target_pos => {break;},
             _ => {}
         };
 
