@@ -1,10 +1,6 @@
-extern crate term;
-use vindinium;
 use vindinium::{Tile, Board};
 use std::convert::From;
 use std::collections::LinkedList;
-use self::term::{Terminal};
-use self::term::color;
 
 pub type Grid = Vec<Vec<Cell>>;
 pub type Path = LinkedList<Cell>;
@@ -64,27 +60,6 @@ impl<'a> From<&'a IVector2> for UVector2 {
         let x = vec.x.abs();
         let y = vec.y.abs();
         UVector2 {x: x as usize, y: y as usize}
-    }
-}
-
-pub fn print_over(path: &Path, map: &Map) {
-    let mut term = term::stdout().unwrap();
-
-    // print tiles and path on board
-    for (x, row) in map.grid.iter().enumerate() {
-        for (y, cell) in row.iter().enumerate() {
-            let p_cell = path.iter().filter(|p_cell| p_cell.pos == map.grid[x][y].pos).next();
-            let s: String = match p_cell {
-                Some(x) => {
-                    term.bg(color::BRIGHT_BLACK).unwrap();
-                    term.fg(color::WHITE).unwrap();
-                    "><".to_string()
-                },
-                    None => vindinium::get_tile_rep(&map.grid[x][y].tile, &mut term)
-            };
-            (write!(term, "{}", s)).unwrap();
-        }
-        (writeln!(term,"")).unwrap();
     }
 }
 
