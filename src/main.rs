@@ -9,6 +9,7 @@ use self::rustc_serialize::json;
 
 use vindinium::*;
 use bot::*;
+mod pathing;
 mod vindinium;
 mod bot;
 
@@ -27,7 +28,7 @@ fn main() {
         Some(s) => s,
         None => { return (); }
     };
-    let mut bot = RandomBot::new();
+    let mut bot = EmergentBot::new();
     loop {
         if state.game.turn >= state.game.heroes.len() as isize {
             state.clear_pretty_print();
