@@ -159,70 +159,67 @@ fn calc_neighbors(cp: &UVector2, target_pos: &UVector2, cells: &Grid, grid_size:
 pub fn gen_path(bot_pos: &UVector2, target_pos: &UVector2, map: &Map) -> Path {
     let path_grid = &map.grid;
     let mut open_nodes: HashMap<UVector2, Cell> = HashMap::new();
-    let start_cell = path_grid[bot_pos.x][bot_pos.y].clone();
-    open_nodes.insert(start_cell.pos.clone(), start_cell);
     let mut closed_nodes: HashMap<UVector2, Cell> = HashMap::new();
+    let start_cell = path_grid[bot_pos.x][bot_pos.y].clone();
+
+    open_nodes.insert(start_cell.pos.clone(), start_cell);
 
     // gather optimal f-val cells
-    loop {
-        // TODO: When implemented properly, this isn't needed
-        if closed_nodes.contains_key(target_pos) {
-            break;
+    while !open_nodes.is_empty() || !closed_nodes.contains_key(&target_pos) {
+        // Find best node in open list
+        let mut best_node = open_nodes.values().next().unwrap().clone();
+        for (_, node) in &open_nodes {
+            if node.f <= best_node.f {
+                best_node = node.clone();
+            }
         }
 
-        if open_nodes.len() > 0 {
+        // calculate and get neighbors to current cell
+        let mut neighbors = calc_neighbors(&best_node.pos, &target_pos, &path_grid, map.size as usize);
 
-            // Find best node in open list
-            let mut best_node = open_nodes.values().next().unwrap().clone();
-            for (_, node) in &open_nodes {
-                if node.f <= best_node.f {
-                    best_node = node.clone();
-                }
-            }
+        // pop most optimal node of open cells and add to closed cells
+        open_nodes.remove(&best_node.pos);
+        closed_nodes.insert(best_node.pos.clone(), best_node.clone());
 
-            // calculate and get neighbors to current cell
-            let mut neighbors = calc_neighbors(&best_node.pos, &target_pos, &path_grid, map.size as usize);
-
-            // pop most optimal node of open cells and add to closed cells
-            open_nodes.remove(&best_node.pos);
-            closed_nodes.insert(best_node.pos.clone(), best_node.clone());
-
-            // Remove new neighbors if it is already in the closed list
-            for (key, _) in &closed_nodes {
-                neighbors.remove(key);
-            }
-
-            // Remove new neighbors if already in the open list--update open cell if g val is better
-            for (key, mut node) in &mut open_nodes {
-                let res = match neighbors.get(key) {
-                    Some(other) => {
-                        if node.g > other.g {
-                            node.f = other.f;
-                            node.g = other.g;
-                            node.h = other.h;
-                        }
-                        Some(other.pos.clone())
-                    },
-                    None    => None
-                };
-
-                match res {
-                    Some(key) => {neighbors.remove(&key);},
-                    None => {}
-                }
-            }
-
-            // append new neighbors
-            open_nodes.extend(neighbors);
+        // Remove new neighbors if it is already in the closed list
+        // check to see if open cell is better than closed
+        for (key, _) in &closed_nodes {
+            neighbors.remove(key);
         }
-        else {
-            panic!("No more cells to calculate!? Path not found");
+
+        // Remove new neighbors if already in the open list--update open cell if g val is better
+        for (key, mut node) in &mut open_nodes {
+            let res = match neighbors.get(key) {
+                Some(other) => {
+                    if node.g > other.g {
+                        node.f = other.f;
+                        node.g = other.g;
+                        node.h = other.h;
+                        node.parent_pos = other.parent_pos.clone();
+                    }
+                    Some(other.pos.clone())
+                },
+                None => None
+            };
+
+            match res {
+                Some(key) => {neighbors.remove(&key);},
+                None => {}
+            }
         }
+
+        // append new neighbors
+        open_nodes.extend(neighbors);
     }
 
     // determine path by walking backwards from the destination
     closed_nodes.remove(&bot_pos);
     let mut path: Path = Path::new();
+
+    if !closed_nodes.contains_key(&target_pos) {
+        panic!("Could not find a valid path to position: {:#?} from {:#?}", target_pos, bot_pos);
+    }
+
     let w_end_node = &closed_nodes.get(&target_pos);
     if w_end_node.is_some() {
         let mut cur_node = w_end_node.unwrap();
