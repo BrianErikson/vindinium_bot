@@ -78,7 +78,7 @@ fn calc_neighbor(cp: &UVector2, ref_cell: &Cell, target_pos: &UVector2) -> Cell 
 
     // calculate rough manhattan distance from target
     let i_cp: IVector2 = IVector2::from(&cell.pos);
-    let h = 10_isize*((i_cp.x-tp.x).abs()) + (i_cp.y-tp.y).abs();
+    let h = 10_isize*((i_cp.x-tp.x).abs() + (i_cp.y-tp.y).abs());
 
     assert!(h <= 255);
     cell.h = h as u8;
