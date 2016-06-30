@@ -2,7 +2,6 @@ use vindinium::{Tile, Board};
 use std::convert::From;
 use std::collections::LinkedList;
 use std::collections::HashMap;
-use std::io;
 
 pub type Grid = Vec<Vec<Cell>>;
 pub type Path = LinkedList<Cell>;
@@ -73,12 +72,8 @@ impl<'a> From<&'a IVector2> for UVector2 {
     }
 }
 
-fn calc_neighbor(cp: &UVector2, ref_cell: &Cell, target_pos: &UVector2, diag: bool) -> Cell {
+fn calc_neighbor(cp: &UVector2, ref_cell: &Cell, target_pos: &UVector2) -> Cell {
     let mut cell = ref_cell.clone();
-    cell.g = match diag {
-        true => 40_u8, // cannot move diagonally in this game, hence the large value
-        false => 10_u8
-    };
     let tp: IVector2 = IVector2::from(target_pos);
 
     // calculate rough manhattan distance from target
@@ -87,6 +82,7 @@ fn calc_neighbor(cp: &UVector2, ref_cell: &Cell, target_pos: &UVector2, diag: bo
 
     assert!(h <= 255);
     cell.h = h as u8;
+    cell.g = 10_u8;
 
     // sum score
     cell.f = cell.g + cell.h;
@@ -120,16 +116,10 @@ fn calc_neighbors(cp: &UVector2, target_pos: &UVector2, cells: &Grid, grid_size:
     //println!("x: {} y: {}", cp.x, cp.y);
     if (i_cp.x-1 >= 0 && i_cp.y-1 >= 0) && (i_cp.x+1 < i_grid_size && i_cp.y+1 < i_grid_size) {
         // now safe to not do bounds checking
-        // diagonal d-weights
-        open_cells.push(calc_neighbor(cp, &cells[cp.x-1][cp.y+1], target_pos, true)); // ul
-        open_cells.push(calc_neighbor(cp, &cells[cp.x-1][cp.y-1], target_pos, true)); // dl
-        open_cells.push(calc_neighbor(cp, &cells[cp.x+1][cp.y+1], target_pos, true)); // ur
-        open_cells.push(calc_neighbor(cp, &cells[cp.x+1][cp.y-1], target_pos, true)); // dr
-        // end diagonal d-weights
-        open_cells.push(calc_neighbor(cp, &cells[cp.x][cp.y+1], target_pos, false)); // uv
-        open_cells.push(calc_neighbor(cp, &cells[cp.x+1][cp.y], target_pos, false)); // hr
-        open_cells.push(calc_neighbor(cp, &cells[cp.x][cp.y-1], target_pos, false)); // dv
-        open_cells.push(calc_neighbor(cp, &cells[cp.x-1][cp.y], target_pos, false)); // dl
+        open_cells.push(calc_neighbor(cp, &cells[cp.x][cp.y+1], target_pos)); // uv
+        open_cells.push(calc_neighbor(cp, &cells[cp.x+1][cp.y], target_pos)); // hr
+        open_cells.push(calc_neighbor(cp, &cells[cp.x][cp.y-1], target_pos)); // dv
+        open_cells.push(calc_neighbor(cp, &cells[cp.x-1][cp.y], target_pos)); // dl
     }
     // slow constrain bounds :(
     else {
@@ -137,25 +127,24 @@ fn calc_neighbors(cp: &UVector2, target_pos: &UVector2, cells: &Grid, grid_size:
             for y in 0..3 {
                 let cell_ind = ((x as isize) - 1, (y as isize) - 1);
                 if cell_ind.0 == 0 && cell_ind.1 == 0 {continue}
-                //println!("Test slow: {}, {}", cell_ind.0, cell_ind.1);
-                let is_diag = match cell_ind {
-                    (-1,-1) => true,
-                    (-1, 1) => true,
-                    (1, 1)  => true,
-                    (1, -1) => true,
-                    (_, _)  => false
+                // excluding diagonal neighbors
+                match cell_ind {
+                    (-1,-1) => {},
+                    (-1, 1) => {},
+                    (1, 1)  => {},
+                    (1, -1) => {},
+                    (_, _)  => {
+                        if cell_index_valid(cell_ind.0, cell_ind.1, grid_size) {
+                            open_cells.push(
+                                calc_neighbor(
+                                    cp,
+                                    &cells[cell_ind.0 as usize][cell_ind.1 as usize],
+                                    target_pos
+                                )
+                            );
+                        }
+                    }
                 };
-
-                if cell_index_valid(cell_ind.0, cell_ind.1, grid_size) {
-                    open_cells.push(
-                        calc_neighbor(
-                            cp,
-                            &cells[cell_ind.0 as usize][cell_ind.1 as usize],
-                            target_pos,
-                            is_diag
-                        )
-                    );
-                }
             }
         }
     }
@@ -185,7 +174,7 @@ pub fn gen_path(bot_pos: &UVector2, target_pos: &UVector2, map: &Map) -> Path {
 
             // Find best node in open list
             let mut best_node = open_nodes.values().next().unwrap().clone();
-            for (key, node) in &open_nodes {
+            for (_, node) in &open_nodes {
                 if node.f <= best_node.f {
                     best_node = node.clone();
                 }
