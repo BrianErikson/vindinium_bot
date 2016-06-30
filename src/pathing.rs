@@ -1,6 +1,7 @@
 use vindinium::{Tile, Board};
 use std::convert::From;
 use std::collections::LinkedList;
+use std::collections::HashMap;
 use std::io;
 
 pub type Grid = Vec<Vec<Cell>>;
@@ -12,7 +13,7 @@ pub struct IVector2 {
     pub y: isize
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone)]
 pub struct UVector2 {
     pub x: usize,
     pub y: usize
@@ -22,6 +23,7 @@ pub struct UVector2 {
 pub struct Cell {
     pub tile: Tile,
     pub pos: UVector2,
+    pub parent_pos: UVector2,
     pub f: u8,
     pub g: u8,
     pub h: u8
@@ -41,7 +43,14 @@ impl<'a> From<&'a Board> for Map {
         for x in 0..board.size {
             let mut new_row: Vec<Cell> = Vec::new();
             for y in 0..board.size {
-                new_row.push(Cell {tile: tiles[x][y].clone(), pos: UVector2 {x: x, y: y}, f: 0, g: 0, h: 0});
+                let pos = UVector2 {x: x, y: y};
+                new_row.push(
+                    Cell {
+                        tile: tiles[x][y].clone(),
+                        pos: pos.clone(),
+                        parent_pos: pos.clone(),
+                        f: 0, g: 0, h: 0
+                    });
             }
             cells.push(new_row);
         }
@@ -64,7 +73,7 @@ impl<'a> From<&'a IVector2> for UVector2 {
     }
 }
 
-fn calc_neighbor(ref_cell: &Cell, target_pos: &UVector2, diag: bool) -> Cell {
+fn calc_neighbor(cp: &UVector2, ref_cell: &Cell, target_pos: &UVector2, diag: bool) -> Cell {
     let mut cell = ref_cell.clone();
     cell.g = match diag {
         true => 40_u8, // cannot move diagonally in this game, hence the large value
@@ -73,8 +82,8 @@ fn calc_neighbor(ref_cell: &Cell, target_pos: &UVector2, diag: bool) -> Cell {
     let tp: IVector2 = IVector2::from(target_pos);
 
     // calculate rough manhattan distance from target
-    let cp: IVector2 = IVector2::from(&cell.pos);
-    let h = 10_isize*((cp.x-tp.x).abs()) + (cp.y-tp.y).abs();
+    let i_cp: IVector2 = IVector2::from(&cell.pos);
+    let h = 10_isize*((i_cp.x-tp.x).abs()) + (i_cp.y-tp.y).abs();
 
     assert!(h <= 255);
     cell.h = h as u8;
@@ -86,6 +95,7 @@ fn calc_neighbor(ref_cell: &Cell, target_pos: &UVector2, diag: bool) -> Cell {
        cell.f = 255_u8; // cannot move into space!
     }
 
+    cell.parent_pos = cp.clone();
     cell
 }
 
@@ -98,7 +108,7 @@ fn cell_index_valid(row: isize, column: isize, grid_size: usize) -> bool {
 
 /// Calculates f, g, and h values for each cell surrounding the `cp` parameter.
 /// - Returns surrounding neighbors with calculated values
-fn calc_neighbors(cp: &UVector2, target_pos: &UVector2, cells: &Grid, grid_size: usize) -> Vec<Cell> {
+fn calc_neighbors(cp: &UVector2, target_pos: &UVector2, cells: &Grid, grid_size: usize) -> HashMap<UVector2, Cell> {
     // ul-uv-ur
     // hl-cp-hr
     // dl-dv-dr
@@ -111,15 +121,15 @@ fn calc_neighbors(cp: &UVector2, target_pos: &UVector2, cells: &Grid, grid_size:
     if (i_cp.x-1 >= 0 && i_cp.y-1 >= 0) && (i_cp.x+1 < i_grid_size && i_cp.y+1 < i_grid_size) {
         // now safe to not do bounds checking
         // diagonal d-weights
-        open_cells.push(calc_neighbor(&cells[cp.x-1][cp.y+1], target_pos, true)); // ul
-        open_cells.push(calc_neighbor(&cells[cp.x-1][cp.y-1], target_pos, true)); // dl
-        open_cells.push(calc_neighbor(&cells[cp.x+1][cp.y+1], target_pos, true)); // ur
-        open_cells.push(calc_neighbor(&cells[cp.x+1][cp.y-1], target_pos, true)); // dr
+        open_cells.push(calc_neighbor(cp, &cells[cp.x-1][cp.y+1], target_pos, true)); // ul
+        open_cells.push(calc_neighbor(cp, &cells[cp.x-1][cp.y-1], target_pos, true)); // dl
+        open_cells.push(calc_neighbor(cp, &cells[cp.x+1][cp.y+1], target_pos, true)); // ur
+        open_cells.push(calc_neighbor(cp, &cells[cp.x+1][cp.y-1], target_pos, true)); // dr
         // end diagonal d-weights
-        open_cells.push(calc_neighbor(&cells[cp.x][cp.y+1], target_pos, false)); // uv
-        open_cells.push(calc_neighbor(&cells[cp.x+1][cp.y], target_pos, false)); // hr
-        open_cells.push(calc_neighbor(&cells[cp.x][cp.y-1], target_pos, false)); // dv
-        open_cells.push(calc_neighbor(&cells[cp.x-1][cp.y], target_pos, false)); // dl
+        open_cells.push(calc_neighbor(cp, &cells[cp.x][cp.y+1], target_pos, false)); // uv
+        open_cells.push(calc_neighbor(cp, &cells[cp.x+1][cp.y], target_pos, false)); // hr
+        open_cells.push(calc_neighbor(cp, &cells[cp.x][cp.y-1], target_pos, false)); // dv
+        open_cells.push(calc_neighbor(cp, &cells[cp.x-1][cp.y], target_pos, false)); // dl
     }
     // slow constrain bounds :(
     else {
@@ -139,6 +149,7 @@ fn calc_neighbors(cp: &UVector2, target_pos: &UVector2, cells: &Grid, grid_size:
                 if cell_index_valid(cell_ind.0, cell_ind.1, grid_size) {
                     open_cells.push(
                         calc_neighbor(
+                            cp,
                             &cells[cell_ind.0 as usize][cell_ind.1 as usize],
                             target_pos,
                             is_diag
@@ -149,82 +160,96 @@ fn calc_neighbors(cp: &UVector2, target_pos: &UVector2, cells: &Grid, grid_size:
         }
     }
     // end constrain bounds
-    open_cells
+    let mut map = HashMap::new();
+    for cell in open_cells {
+        map.insert(cell.pos.clone(), cell.clone());
+    }
+    map
 }
 
 pub fn gen_path(bot_pos: &UVector2, target_pos: &UVector2, map: &Map) -> Path {
     let path_grid = &map.grid;
-    let mut open_cells: Vec<Cell> = vec!((path_grid[bot_pos.x][bot_pos.y].clone()));
-    let mut closed_cells: LinkedList<Cell> = LinkedList::new();
+    let mut open_nodes: HashMap<UVector2, Cell> = HashMap::new();
+    let start_cell = path_grid[bot_pos.x][bot_pos.y].clone();
+    open_nodes.insert(start_cell.pos.clone(), start_cell);
+    let mut closed_nodes: HashMap<UVector2, Cell> = HashMap::new();
 
     // gather optimal f-val cells
     loop {
-        match closed_cells.back() {
-            Some(cell) if cell.pos == *target_pos => {break;},
-            _ => {}
-        };
+        // TODO: When implemented properly, this isn't needed
+        if closed_nodes.contains_key(target_pos) {
+            break;
+        }
 
-        if open_cells.len() > 0 {
-            let mut best_ind = 0;
-            for i in 0..open_cells.len() {
-                if open_cells[i].f <= open_cells[best_ind].f { // cur_cell.f < best_cell.f
-                    best_ind = i;
+        if open_nodes.len() > 0 {
+
+            // Find best node in open list
+            let mut best_node = open_nodes.values().next().unwrap().clone();
+            for (key, node) in &open_nodes {
+                if node.f <= best_node.f {
+                    best_node = node.clone();
                 }
             }
 
             // calculate and get neighbors to current cell
-            let ref mut neighbors = calc_neighbors(&open_cells[best_ind].pos, &target_pos, &path_grid, map.size as usize);
+            let mut neighbors = calc_neighbors(&best_node.pos, &target_pos, &path_grid, map.size as usize);
 
-            // pop most optimal cell off of open cells and add to closed cells
-            let best_cell = open_cells.remove(best_ind);
-            closed_cells.push_back(best_cell);
+            // pop most optimal node of open cells and add to closed cells
+            open_nodes.remove(&best_node.pos);
+            closed_nodes.insert(best_node.pos.clone(), best_node.clone());
 
             // Remove new neighbors if it is already in the closed list
-            for ref cell in &closed_cells {
-                let mut ind: isize = -1;
-                for i in 0..neighbors.len() {
-                    let ref other = neighbors[i];
-                    if cell.pos == other.pos {
-                        ind = i as isize;
-                        break;
-                    }
-                }
-
-                if ind >= 0 {
-                    neighbors.remove(ind as usize);
-                }
+            for (key, _) in &closed_nodes {
+                neighbors.remove(key);
             }
 
             // Remove new neighbors if already in the open list--update open cell if g val is better
-            for mut cell in &mut open_cells {
-                let mut ind: isize = -1;
-                for i in 0..neighbors.len() {
-                    let ref other = neighbors[i];
-                    if cell.pos == other.pos {
-                        ind = i as isize;
-                        if cell.g > other.g {
-                            cell.f = other.f;
-                            cell.g = other.g;
-                            cell.h = other.h;
+            for (key, mut node) in &mut open_nodes {
+                let res = match neighbors.get(key) {
+                    Some(other) => {
+                        if node.g > other.g {
+                            node.f = other.f;
+                            node.g = other.g;
+                            node.h = other.h;
                         }
-                        break;
-                    }
-                }
+                        Some(other.pos.clone())
+                    },
+                    None    => None
+                };
 
-                if ind >= 0 {
-                    neighbors.remove(ind as usize);
+                match res {
+                    Some(key) => {neighbors.remove(&key);},
+                    None => {}
                 }
             }
 
             // append new neighbors
-            open_cells.append(neighbors);
+            open_nodes.extend(neighbors);
         }
         else {
             panic!("No more cells to calculate!? Path not found");
         }
     }
 
-    // determine path
-    closed_cells.pop_front();
-    closed_cells
+    // determine path by walking backwards from the destination
+    closed_nodes.remove(&bot_pos);
+    let mut path: Path = Path::new();
+    let w_end_node = &closed_nodes.get(&target_pos);
+    if w_end_node.is_some() {
+        let mut cur_node = w_end_node.unwrap();
+        path.push_front(cur_node.clone());
+        while cur_node.parent_pos != cur_node.pos && cur_node.pos != *bot_pos { // parent pos == node pos if no parent
+            let w_node = closed_nodes.get(&cur_node.parent_pos);
+            if w_node.is_some() {
+                cur_node = w_node.unwrap();
+                path.push_front(cur_node.clone());
+            }
+            else {
+                println!("Error in path gen. Breaking on {:#?}", cur_node);
+                break;
+            }
+        }
+    }
+
+    path
 }
