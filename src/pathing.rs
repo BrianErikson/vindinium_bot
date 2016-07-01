@@ -2,6 +2,7 @@ use vindinium::{Tile, Board};
 use std::convert::From;
 use std::collections::LinkedList;
 use std::collections::HashMap;
+use std::cmp;
 
 pub type Grid = Vec<Vec<Cell>>;
 pub type Path = LinkedList<Cell>;
@@ -80,12 +81,11 @@ fn calc_neighbor(cp: &UVector2, ref_cell: &Cell, target_pos: &UVector2) -> Cell 
     let i_cp: IVector2 = IVector2::from(&cell.pos);
     let h = 10_isize*((i_cp.x-tp.x).abs() + (i_cp.y-tp.y).abs());
 
-    assert!(h <= 255);
-    cell.h = h as u8;
+    cell.h = cmp::max(h, 255) as u8;
     cell.g = 10_u8;
 
     // sum score
-    cell.f = cell.g + cell.h;
+    cell.f = cmp::max((cell.g as usize) + (cell.h as usize), 255) as u8;
 
     if cell.tile != Tile::Free {
        cell.f = 255_u8; // cannot move into space!
@@ -156,7 +156,7 @@ fn calc_neighbors(cp: &UVector2, target_pos: &UVector2, cells: &Grid, grid_size:
     map
 }
 
-pub fn gen_path(bot_pos: &UVector2, target_pos: &UVector2, map: &Map) -> Path {
+pub fn gen_path(bot_pos: &UVector2, target_pos: &UVector2, map: &Map) -> Option<Path> {
     let path_grid = &map.grid;
     let mut open_nodes: HashMap<UVector2, Cell> = HashMap::new();
     let mut closed_nodes: HashMap<UVector2, Cell> = HashMap::new();
@@ -165,7 +165,11 @@ pub fn gen_path(bot_pos: &UVector2, target_pos: &UVector2, map: &Map) -> Path {
     open_nodes.insert(start_cell.pos.clone(), start_cell);
 
     // gather optimal f-val cells
-    while !open_nodes.is_empty() || !closed_nodes.contains_key(&target_pos) {
+    while !open_nodes.is_empty() {
+        if closed_nodes.contains_key(&target_pos) {
+            break;
+        }
+
         // Find best node in open list
         let mut best_node = open_nodes.values().next().unwrap().clone();
         for (_, node) in &open_nodes {
@@ -217,7 +221,8 @@ pub fn gen_path(bot_pos: &UVector2, target_pos: &UVector2, map: &Map) -> Path {
     let mut path: Path = Path::new();
 
     if !closed_nodes.contains_key(&target_pos) {
-        panic!("Could not find a valid path to position: {:#?} from {:#?}", target_pos, bot_pos);
+        println!("Could not find a valid path to position: {:#?} from {:#?}", target_pos, bot_pos);
+        return None
     }
 
     let w_end_node = &closed_nodes.get(&target_pos);
@@ -229,13 +234,15 @@ pub fn gen_path(bot_pos: &UVector2, target_pos: &UVector2, map: &Map) -> Path {
             if w_node.is_some() {
                 cur_node = w_node.unwrap();
                 path.push_front(cur_node.clone());
+            } else if cur_node.parent_pos == *bot_pos {
+                break;
             }
             else {
                 println!("Error in path gen. Breaking on {:#?}", cur_node);
-                break;
+                return None
             }
         }
     }
 
-    path
+    Some(path)
 }

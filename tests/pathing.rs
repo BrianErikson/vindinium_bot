@@ -40,6 +40,38 @@ fn print_over(path: &pathing::Path, map: &Map) {
 }
 
 #[test]
+fn pathing_ok() {
+    let mut json_str = String::new();
+    let res = File::open(&Path::new("tests/test_state.json")).unwrap().read_to_string(&mut json_str);
+    match res {
+        Ok(_) => {}
+        Err(err) => panic!("{}", err)
+    }
+
+    let state: State = match json::decode(&json_str) {
+        Ok(state) => state,
+        Err(err) => panic!("{}", err)
+    };
+
+    let map: pathing::Map = pathing::Map::from(&state.game.board);
+    let player_pos: pathing::UVector2 = pathing::UVector2 {
+        x: state.hero.pos.x as usize, y: state.hero.pos.y as usize
+    };
+    let w_path = pathing::gen_path(
+        &player_pos,
+        &pathing::UVector2 { x: player_pos.x + 8, y: player_pos.y },
+        &map
+    );
+    assert!(w_path.is_some());
+    let w_path = pathing::gen_path(
+        &player_pos,
+        &pathing::UVector2 { x: 0, y: 0 },
+        &map
+    );
+    assert!(w_path.is_none());
+}
+
+#[test]
 //#[ignore]
 fn display_path() {
     let mut json_str = String::new();
@@ -57,10 +89,14 @@ fn display_path() {
     let map: pathing::Map = pathing::Map::from(&state.game.board);
     let player_pos: pathing::UVector2 = pathing::UVector2{
         x: state.hero.pos.x as usize, y: state.hero.pos.y as usize};
-    let path: pathing::Path = pathing::gen_path(
+    let w_path = pathing::gen_path(
         &player_pos,
         &pathing::UVector2{x: player_pos.x + 8, y: player_pos.y},
         &map
     );
+    let path: pathing::Path = match w_path {
+        Some(path) => path,
+        None => {panic!("Error occurred while computing path.");}
+    };
     print_over(&path, &map);
 }
