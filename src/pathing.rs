@@ -87,8 +87,8 @@ fn calc_neighbor(cp: &UVector2, ref_cell: &Cell, target_pos: &UVector2) -> Cell 
     // sum score
     cell.f = cmp::max((cell.g as usize) + (cell.h as usize), 255) as u8;
 
-    if (cell.tile != Tile::Free && cell.pos != target_pos) ||
-        (cell.tile == Tile::Wood && cell.pos == target_pos) {
+    if (cell.tile != Tile::Free && cell.pos != *target_pos) ||
+        (cell.tile == Tile::Wood && cell.pos == *target_pos) {
 
         cell.f = 255_u8; // cannot move into space!
     }
