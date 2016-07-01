@@ -2,7 +2,6 @@ use vindinium::{Tile, Board};
 use std::convert::From;
 use std::collections::LinkedList;
 use std::collections::HashMap;
-use std::cmp;
 
 pub type Grid = Vec<Vec<Cell>>;
 pub type Path = LinkedList<Cell>;
@@ -24,9 +23,9 @@ pub struct Cell {
     pub tile: Tile,
     pub pos: UVector2,
     pub parent_pos: UVector2,
-    pub f: u8,
-    pub g: u8,
-    pub h: u8
+    pub f: usize,
+    pub g: usize,
+    pub h: usize
 }
 
 #[derive(Debug, Clone)]
@@ -73,28 +72,29 @@ impl<'a> From<&'a IVector2> for UVector2 {
     }
 }
 
-fn calc_neighbor(cp: &UVector2, ref_cell: &Cell, target_pos: &UVector2) -> Cell {
+fn calc_neighbor(cp: &UVector2, ref_cell: &Cell, target_pos: &UVector2) -> Option<Cell> {
     let mut cell = ref_cell.clone();
+
+    if (cell.tile != Tile::Free && cell.pos != *target_pos) ||
+        (cell.tile == Tile::Wood && cell.pos == *target_pos) {
+
+        return None
+    }
+
     let tp: IVector2 = IVector2::from(target_pos);
 
     // calculate rough manhattan distance from target
     let i_cp: IVector2 = IVector2::from(&cell.pos);
     let h = 10_isize*((i_cp.x-tp.x).abs() + (i_cp.y-tp.y).abs());
 
-    cell.h = cmp::max(h, 255) as u8;
-    cell.g = 10_u8;
+    cell.h = h as usize;
+    cell.g = 10;
 
     // sum score
-    cell.f = cmp::max((cell.g as usize) + (cell.h as usize), 255) as u8;
-
-    if (cell.tile != Tile::Free && cell.pos != *target_pos) ||
-        (cell.tile == Tile::Wood && cell.pos == *target_pos) {
-
-        cell.f = 255_u8; // cannot move into space!
-    }
+    cell.f = cell.g + cell.h;
 
     cell.parent_pos = cp.clone();
-    cell
+    Some(cell)
 }
 
 fn cell_index_valid(row: isize, column: isize, grid_size: usize) -> bool {
@@ -112,16 +112,16 @@ fn calc_neighbors(cp: &UVector2, target_pos: &UVector2, cells: &Grid, grid_size:
     // dl-dv-dr
     let i_grid_size = grid_size as isize;
     let i_cp = IVector2::from(cp);
-    let mut open_cells: Vec<Cell> = vec!();
+    let mut w_open_cells: Vec<Option<Cell>> = vec!();
 
     // quick constrain bounds
     //println!("x: {} y: {}", cp.x, cp.y);
     if (i_cp.x-1 >= 0 && i_cp.y-1 >= 0) && (i_cp.x+1 < i_grid_size && i_cp.y+1 < i_grid_size) {
         // now safe to not do bounds checking
-        open_cells.push(calc_neighbor(cp, &cells[cp.x][cp.y+1], target_pos)); // uv
-        open_cells.push(calc_neighbor(cp, &cells[cp.x+1][cp.y], target_pos)); // hr
-        open_cells.push(calc_neighbor(cp, &cells[cp.x][cp.y-1], target_pos)); // dv
-        open_cells.push(calc_neighbor(cp, &cells[cp.x-1][cp.y], target_pos)); // dl
+        w_open_cells.push(calc_neighbor(cp, &cells[cp.x][cp.y+1], target_pos)); // uv
+        w_open_cells.push(calc_neighbor(cp, &cells[cp.x+1][cp.y], target_pos)); // hr
+        w_open_cells.push(calc_neighbor(cp, &cells[cp.x][cp.y-1], target_pos)); // dv
+        w_open_cells.push(calc_neighbor(cp, &cells[cp.x-1][cp.y], target_pos)); // dl
     }
     // slow constrain bounds :(
     else {
@@ -137,7 +137,7 @@ fn calc_neighbors(cp: &UVector2, target_pos: &UVector2, cells: &Grid, grid_size:
                     (1, -1) => {},
                     (_, _)  => {
                         if cell_index_valid(cell_ind.0, cell_ind.1, grid_size) {
-                            open_cells.push(
+                            w_open_cells.push(
                                 calc_neighbor(
                                     cp,
                                     &cells[cell_ind.0 as usize][cell_ind.1 as usize],
@@ -152,8 +152,11 @@ fn calc_neighbors(cp: &UVector2, target_pos: &UVector2, cells: &Grid, grid_size:
     }
     // end constrain bounds
     let mut map = HashMap::new();
-    for cell in open_cells {
-        map.insert(cell.pos.clone(), cell.clone());
+    for w_cell in w_open_cells {
+        if w_cell.is_some() {
+            let cell = w_cell.unwrap();
+            map.insert(cell.pos.clone(), cell.clone());
+        }
     }
     map
 }
