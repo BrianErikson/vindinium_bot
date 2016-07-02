@@ -8,7 +8,6 @@ use std::io::Read;
 use self::rustc_serialize::json;
 
 use vindinium::*;
-use bot::*;
 mod pathing;
 mod vindinium;
 mod bot;
@@ -28,7 +27,7 @@ fn main() {
         Some(s) => s,
         None => { return (); }
     };
-    let mut bot = EmergentBot::new();
+
     loop {
         if state.game.turn >= state.game.heroes.len() as isize {
             state.clear_pretty_print();
@@ -38,8 +37,8 @@ fn main() {
             println!("Game finished!");
             break;
         }
-        bot = bot.step(&state);
-        let (url, obj) = step_msg(&settings, &state, bot.dir());
+        let dir = bot::step(&state);
+        let (url, obj) = step_msg(&settings, &state, dir);
         state = match request(url, obj) {
             Some(s) => s,
             None => { break; },

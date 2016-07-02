@@ -98,14 +98,6 @@ pub enum Dir {
     West,
 }
 
-
-// API
-
-pub trait Bot {
-    fn step(&self, &State) -> Self;
-    fn dir(&self) -> Dir;
-}
-
 impl Settings {
     pub fn start_url(&self, v: &str) -> String {
         let mut url = self.url.clone();
