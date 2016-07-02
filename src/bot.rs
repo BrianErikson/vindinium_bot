@@ -1,9 +1,34 @@
 use std::convert::From;
-use vindinium::{Dir, State};
+use vindinium::{Dir, State, Tile};
 use pathing;
 use pathing::{UVector2, IVector2, Map};
 
+struct Location {
+    pos: UVector2,
+    tile: Tile
+}
+
 fn find_destination(state: &State) -> Option<UVector2> {
+    let health = state.hero.life;
+    let other_heroes = state.game.heroes.iter().filter(|hero| hero.id != state.hero.id);
+    let mut taverns: Vec<Location> = vec!();
+    let mut mines: Vec<Location> = vec!();
+    for (x, row) in state.game.board.tiles.iter().enumerate() {
+        for (y, tile) in row.iter().enumerate() {
+            match *tile {
+                Tile::Tavern => {
+                    taverns.push(Location {pos: UVector2 {x: x, y: y}, tile: tile.clone()});
+                },
+                Tile::Mine(_) => {
+                    mines.push(Location {pos: UVector2 {x: x, y: y}, tile: tile.clone()});
+                },
+                _ => {}
+            }
+        }
+    }
+    
+
+
     None
 }
 
