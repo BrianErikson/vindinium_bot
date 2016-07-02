@@ -1,7 +1,13 @@
 use std::convert::From;
+use std::cmp::Ordering;
 use vindinium::{Dir, State, Tile};
 use pathing;
 use pathing::{UVector2, IVector2, Map};
+
+const MAX_HEALTH: u8 = 100;
+const LOW_HEALTH_PER: f32 = 0.25; // represented as percent of max health
+const LOW_HEALTH: u8 = ((MAX_HEALTH as f32) * LOW_HEALTH_PER) as u8;
+const CLOSE_RADIUS: u8 = 3; // In tiles
 
 struct Location {
     pos: UVector2,
@@ -9,6 +15,8 @@ struct Location {
 }
 
 fn find_destination(state: &State) -> Option<UVector2> {
+
+    let hero_pos = UVector2::from(&state.hero.pos);
     let health = state.hero.life;
     let other_heroes = state.game.heroes.iter().filter(|hero| hero.id != state.hero.id);
     let mut taverns: Vec<Location> = vec!();
@@ -26,8 +34,20 @@ fn find_destination(state: &State) -> Option<UVector2> {
             }
         }
     }
-    
+    let dist_sort = &|a: &Location, b: &Location| -> Ordering {
+        hero_pos.distance_from(&a.pos).cmp(&hero_pos.distance_from(&b.pos))
+    };
+    taverns.sort_by(dist_sort);
+    mines.sort_by(dist_sort);
 
+    if health as u8 <= LOW_HEALTH {
+        return Some(taverns[0].pos.clone()) // returns closest tavern
+    }
+    //else if player close by
+    //else if mine close by
+    //else if other player lower health than i
+    //else if unclaimed mine
+    //else claim owned mine
 
     None
 }

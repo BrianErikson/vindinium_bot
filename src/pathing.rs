@@ -1,4 +1,4 @@
-use vindinium::{Tile, Board};
+use vindinium::{Tile, Board, Pos};
 use std::convert::From;
 use std::collections::LinkedList;
 use std::collections::HashMap;
@@ -34,6 +34,15 @@ pub struct Map {
     pub grid: Grid
 }
 
+impl UVector2 {
+    pub fn distance_from(&self, other: &UVector2) -> usize {
+        let other_i = IVector2::from(other);
+        let self_i = IVector2::from(self);
+        let val_sq = (other_i.x - self_i.x).pow(2) + (other_i.y - self_i.y).pow(2);
+        (val_sq as f64).sqrt() as usize
+    }
+}
+
 impl<'a> From<&'a Board> for Map {
     fn from(board: &'a Board) -> Self {
         let tiles = &board.tiles;
@@ -66,6 +75,14 @@ impl<'a> From<&'a UVector2> for IVector2 {
 
 impl<'a> From<&'a IVector2> for UVector2 {
     fn from(vec: &'a IVector2) -> Self {
+        let x = vec.x.abs();
+        let y = vec.y.abs();
+        UVector2 {x: x as usize, y: y as usize}
+    }
+}
+
+impl<'a> From<&'a Pos> for UVector2 {
+    fn from(vec: &'a Pos) -> Self {
         let x = vec.x.abs();
         let y = vec.y.abs();
         UVector2 {x: x as usize, y: y as usize}
