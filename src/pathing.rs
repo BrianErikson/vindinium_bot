@@ -35,11 +35,12 @@ pub struct Map {
 }
 
 impl UVector2 {
+    /// Rough manhattan distance from target vector
     pub fn distance_from(&self, other: &UVector2) -> usize {
         let other_i = IVector2::from(other);
         let self_i = IVector2::from(self);
-        let val_sq = (other_i.x - self_i.x).pow(2) + (other_i.y - self_i.y).pow(2);
-        (val_sq as f64).sqrt() as usize
+        let dist = 10_isize*((self_i.x-other_i.x).abs() + (self_i.y-other_i.y).abs());
+        dist as usize
     }
 }
 
@@ -98,13 +99,7 @@ fn calc_neighbor(cp: &UVector2, ref_cell: &Cell, target_pos: &UVector2) -> Optio
         return None
     }
 
-    let tp: IVector2 = IVector2::from(target_pos);
-
-    // calculate rough manhattan distance from target
-    let i_cp: IVector2 = IVector2::from(&cell.pos);
-    let h = 10_isize*((i_cp.x-tp.x).abs() + (i_cp.y-tp.y).abs());
-
-    cell.h = h as usize;
+    cell.h = cell.pos.distance_from(&target_pos);
     cell.g = 10;
 
     // sum score

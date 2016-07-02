@@ -1,13 +1,13 @@
 use std::convert::From;
 use std::cmp::Ordering;
-use vindinium::{Dir, State, Tile};
+use vindinium::{Dir, State, Tile, Hero};
 use pathing;
 use pathing::{UVector2, IVector2, Map};
 
 const MAX_HEALTH: u8 = 100;
 const LOW_HEALTH_PER: f32 = 0.25; // represented as percent of max health
 const LOW_HEALTH: u8 = ((MAX_HEALTH as f32) * LOW_HEALTH_PER) as u8;
-const CLOSE_RADIUS: u8 = 3; // In tiles
+const CLOSE_RADIUS: usize = 3; // In tiles
 
 struct Location {
     pos: UVector2,
@@ -17,8 +17,10 @@ struct Location {
 fn find_destination(state: &State) -> Option<UVector2> {
 
     let hero_pos = UVector2::from(&state.hero.pos);
-    let health = state.hero.life;
-    let other_heroes = state.game.heroes.iter().filter(|hero| hero.id != state.hero.id);
+    let bot_life = state.hero.life;
+    let mut other_heroes: Vec<&Hero> = state.game.heroes.iter()
+                                                        .filter(|hero| hero.id != state.hero.id)
+                                                        .collect::<Vec<&Hero>>();
     let mut taverns: Vec<Location> = vec!();
     let mut mines: Vec<Location> = vec!();
     for (x, row) in state.game.board.tiles.iter().enumerate() {
@@ -34,20 +36,63 @@ fn find_destination(state: &State) -> Option<UVector2> {
             }
         }
     }
-    let dist_sort = &|a: &Location, b: &Location| -> Ordering {
+
+    other_heroes.sort_by(|a, b|
+                             hero_pos.distance_from(&UVector2::from(&a.pos))
+                                 .cmp(&hero_pos.distance_from(&UVector2::from(&b.pos)))
+    );
+
+    let loc_sort = &|a: &Location, b: &Location| -> Ordering {
         hero_pos.distance_from(&a.pos).cmp(&hero_pos.distance_from(&b.pos))
     };
-    taverns.sort_by(dist_sort);
-    mines.sort_by(dist_sort);
+    taverns.sort_by(loc_sort);
+    mines.sort_by(loc_sort);
 
-    if health as u8 <= LOW_HEALTH {
+    if bot_life as u8 <= LOW_HEALTH {
         return Some(taverns[0].pos.clone()) // returns closest tavern
     }
-    //else if player close by
-    //else if mine close by
-    //else if other player lower health than i
-    //else if unclaimed mine
-    //else claim owned mine
+
+    let enemy = other_heroes[0];
+    let enemy_pos = UVector2::from(&enemy.pos);
+    if hero_pos.distance_from(&enemy_pos) <= CLOSE_RADIUS {
+
+        let enemy_mines = mines.iter().filter(|loc| match loc.tile {
+            Tile::Mine(w_hero_id) => match w_hero_id {
+                Some(hero_id) if hero_id == enemy.id => true,
+                _ => false
+            },
+            _ => false
+        }).collect::<Vec<&Location>>();
+        if enemy.life < bot_life && !enemy_mines.is_empty() {
+            return Some(enemy_pos)
+        }
+        else if hero_pos.distance_from(&taverns[0].pos) <= CLOSE_RADIUS {
+            return Some(taverns[0].pos.clone())
+        }
+    }
+
+    if hero_pos.distance_from(&mines[0].pos) <= CLOSE_RADIUS {
+        return Some(mines[0].pos.clone())
+    }
+
+    let closest_enemy_pos = UVector2::from(&other_heroes[0].pos);
+    if other_heroes[0].life < bot_life
+        && hero_pos.distance_from(&closest_enemy_pos) <= CLOSE_RADIUS * 2 {
+
+        return Some(closest_enemy_pos)
+    }
+
+    let unclaimed = mines.iter().filter(|loc| match loc.tile {
+        Tile::Mine(w_hero_id) => w_hero_id.is_none(),
+        _ => false
+    }).collect::<Vec<&Location>>();
+
+    if !unclaimed.is_empty() {
+        return Some(unclaimed[0].pos.clone())
+    }
+    else {
+        return Some(mines[0].pos.clone())
+    }
 
     None
 }
