@@ -23,8 +23,8 @@ fn find_destination(state: &State) -> Option<UVector2> {
                                                         .collect::<Vec<&Hero>>();
     let mut taverns: Vec<Location> = vec!();
     let mut mines: Vec<Location> = vec!();
-    for (x, row) in state.game.board.tiles.iter().enumerate() {
-        for (y, tile) in row.iter().enumerate() {
+    for (y, row) in state.game.board.tiles.iter().enumerate() {
+        for (x, tile) in row.iter().enumerate() {
             match *tile {
                 Tile::Tavern => {
                     taverns.push(Location {pos: UVector2 {x: x, y: y}, tile: tile.clone()});
