@@ -109,13 +109,6 @@ fn calc_neighbor(cp: &UVector2, ref_cell: &Cell, target_pos: &UVector2) -> Optio
     Some(cell)
 }
 
-fn cell_index_valid(row: isize, column: isize, grid_size: usize) -> bool {
-    let size: isize = grid_size as isize;
-
-    if (row-1 >= 0 && column-1 >= 0) && (row+1 < size && column+1 < size) {true}
-    else {false}
-}
-
 /// Calculates f, g, and h values for each cell surrounding the `cp` parameter.
 /// - Returns surrounding neighbors with calculated values
 fn calc_neighbors(cp: &UVector2, target_pos: &UVector2, cells: &Grid, grid_size: usize) -> HashMap<UVector2, Cell> {
@@ -126,41 +119,18 @@ fn calc_neighbors(cp: &UVector2, target_pos: &UVector2, cells: &Grid, grid_size:
     let i_cp = IVector2::from(cp);
     let mut w_open_cells: Vec<Option<Cell>> = vec!();
 
-    // quick constrain bounds
-    //println!("x: {} y: {}", cp.x, cp.y);
-    if (i_cp.x-1 >= 0 && i_cp.y-1 >= 0) && (i_cp.x+1 < i_grid_size && i_cp.y+1 < i_grid_size) {
-        // now safe to not do bounds checking
-        w_open_cells.push(calc_neighbor(cp, &cells[cp.x][cp.y+1], target_pos)); // uv
-        w_open_cells.push(calc_neighbor(cp, &cells[cp.x+1][cp.y], target_pos)); // hr
-        w_open_cells.push(calc_neighbor(cp, &cells[cp.x][cp.y-1], target_pos)); // dv
-        w_open_cells.push(calc_neighbor(cp, &cells[cp.x-1][cp.y], target_pos)); // dl
+    // constrain bounds
+    if i_cp.x - 1 >= 0 {
+        w_open_cells.push(calc_neighbor(cp, &cells[cp.x-1][cp.y], target_pos));
     }
-    // slow constrain bounds :(
-    else {
-        for x in 0..3 {
-            for y in 0..3 {
-                let cell_ind = ((x as isize) - 1, (y as isize) - 1);
-                if cell_ind.0 == 0 && cell_ind.1 == 0 {continue}
-                // excluding diagonal neighbors
-                match cell_ind {
-                    (-1,-1) => {},
-                    (-1, 1) => {},
-                    (1, 1)  => {},
-                    (1, -1) => {},
-                    (_, _)  => {
-                        if cell_index_valid(cell_ind.0, cell_ind.1, grid_size) {
-                            w_open_cells.push(
-                                calc_neighbor(
-                                    cp,
-                                    &cells[cell_ind.0 as usize][cell_ind.1 as usize],
-                                    target_pos
-                                )
-                            );
-                        }
-                    }
-                };
-            }
-        }
+    if i_cp.x + 1 < i_grid_size {
+        w_open_cells.push(calc_neighbor(cp, &cells[cp.x+1][cp.y], target_pos));
+    }
+    if i_cp.y - 1 >= 0 {
+        w_open_cells.push(calc_neighbor(cp, &cells[cp.x][cp.y-1], target_pos));
+    }
+    if i_cp.y + 1 < i_grid_size {
+        w_open_cells.push(calc_neighbor(cp, &cells[cp.x][cp.y+1], target_pos));
     }
     // end constrain bounds
     let mut map = HashMap::new();

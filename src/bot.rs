@@ -101,13 +101,15 @@ fn get_direction(pos1: &UVector2, pos2: &UVector2) -> Dir {
     let cur_pos = IVector2::from(pos1);
     let new_pos = IVector2::from(pos2);
 
-    return match (cur_pos.x - new_pos.x, cur_pos.y - new_pos.y) {
-        (0,1) => Dir::North,
-        (1,0) => Dir::East,
-        (0,-1) => Dir::South,
-        (-1,0) => Dir::West,
+    return match (new_pos.x - cur_pos.x, new_pos.y - cur_pos.y) {
+        (0,1) => Dir::East,
+        (1,0) => Dir::South,
+        (0,-1) => Dir::West,
+        (-1,0) => Dir::North,
         (_,_) => {
-            println!("Could not determine direction returned from path!");
+            println!(
+                "Could not determine direction returned from path! {:#?} to {:#?}", cur_pos, new_pos
+            );
             Dir::Stay
         }
     };
