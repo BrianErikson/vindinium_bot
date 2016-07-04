@@ -9,6 +9,7 @@ const LOW_HEALTH_PER: f32 = 0.25; // represented as percent of max health
 const LOW_HEALTH: u8 = ((MAX_HEALTH as f32) * LOW_HEALTH_PER) as u8;
 const CLOSE_RADIUS: usize = 3; // In tiles
 
+#[derive(Debug, Clone)]
 struct Location {
     pos: UVector2,
     tile: Tile
@@ -29,8 +30,11 @@ fn find_destination(state: &State) -> Option<UVector2> {
                 Tile::Tavern => {
                     taverns.push(Location {pos: UVector2 {x: x, y: y}, tile: tile.clone()});
                 },
-                Tile::Mine(_) => {
-                    mines.push(Location {pos: UVector2 {x: x, y: y}, tile: tile.clone()});
+                Tile::Mine(id) => {
+                    // Don't add bot-owned mines
+                    if (id.is_some() && id.unwrap() != state.hero.id) || id.is_none() {
+                        mines.push(Location {pos: UVector2 {x: x, y: y}, tile: tile.clone()});
+                    }
                 },
                 _ => {}
             }
@@ -49,6 +53,7 @@ fn find_destination(state: &State) -> Option<UVector2> {
     mines.sort_by(loc_sort);
 
     if bot_life as u8 <= LOW_HEALTH {
+        println!("Destination: {:#?}", taverns[0]);
         return Some(taverns[0].pos.clone()) // returns closest tavern
     }
 
@@ -64,21 +69,24 @@ fn find_destination(state: &State) -> Option<UVector2> {
             _ => false
         }).collect::<Vec<&Location>>();
         if enemy.life < bot_life && !enemy_mines.is_empty() {
+            println!("Destination: Enemy {:#?}", enemy.id);
             return Some(enemy_pos)
         }
         else if hero_pos.distance_from(&taverns[0].pos) <= CLOSE_RADIUS {
+            println!("Destination: {:#?}, because healh is too low", taverns[0]);
             return Some(taverns[0].pos.clone())
         }
     }
 
     if hero_pos.distance_from(&mines[0].pos) <= CLOSE_RADIUS {
+        println!("Destination: {:#?}", mines[0]);
         return Some(mines[0].pos.clone())
     }
 
     let closest_enemy_pos = UVector2::from(&other_heroes[0].pos);
     if other_heroes[0].life < bot_life
         && hero_pos.distance_from(&closest_enemy_pos) <= CLOSE_RADIUS * 2 {
-
+        println!("Destination: Enemy {:#?}", other_heroes[0].id);
         return Some(closest_enemy_pos)
     }
 
@@ -88,9 +96,11 @@ fn find_destination(state: &State) -> Option<UVector2> {
     }).collect::<Vec<&Location>>();
 
     if !unclaimed.is_empty() {
+        println!("Destination: {:#?}", unclaimed[0]);
         return Some(unclaimed[0].pos.clone())
     }
     else {
+        println!("Destination: {:#?}", mines[0]);
         return Some(mines[0].pos.clone())
     }
 
@@ -120,9 +130,8 @@ pub fn step(state: &State) -> Dir {
     let w_destination = find_destination(state);
     let dir = match w_destination {
         Some(dest) => {
-            let w_path = pathing::gen_path(
-                &cur_pos, &dest, &Map::from(&state.game.board)
-            );
+            //println!("Destination: {:#?}", dest);
+            let w_path = pathing::gen_path(&cur_pos, &dest, &Map::from(&state.game.board));
             match w_path {
                 Some(path) => get_direction(&cur_pos, &path.front().unwrap().pos),
                 None => Dir::Stay //Path from bot pos to target is not valid TODO: Find a new target?
